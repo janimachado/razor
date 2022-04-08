@@ -1,0 +1,347 @@
+@model WorkflowOrder
+@using Envision.TravelManagement.Core.Template.Templates
+@using Framework
+@using System
+@using System.Globalization
+@using System.Linq
+@using System.Text.RegularExpressions
+
+@{
+    int counter = 1;
+}
+
+@functions {
+
+    public static string exchangeFormat(string exchangeValue){
+        if(exchangeValue == "BRL"){
+            return "R$";
+        }else {
+            return exchangeValue;
+        }
+    }
+
+    public static string exchangeDate(string autoExchangeDate, string manualExchangeDate) {
+
+        if(autoExchangeDate == "1/1/0001" || autoExchangeDate == "1/1/1"){
+            return manualExchangeDate;
+        } else {
+            return autoExchangeDate;
+        }
+    }
+    
+    public static string ParseFarePaxTypeToPassengerType(string farePaxType)
+    {
+        if (!string.IsNullOrWhiteSpace(farePaxType))          {
+            switch (farePaxType)
+            {
+                case "Child":
+                    return "Criança";
+                case "Baby":
+                    return "Bebê";
+                default:
+                    return "Adulto";
+            }
+        }
+        return string.Empty;
+    }
+    
+    public static string getBgColor(int counter, string bgColor) {
+         return counter % 2 == 0 ? "" : bgColor;
+    }
+
+    public static decimal MarkupedFareAmountFromAirBook(dynamic airBookAuxiliar, string farePaxType)   {
+        var calculatedMarkup = 0m;
+        if (airBookAuxiliar != null && airBookAuxiliar.Fields != null && airBookAuxiliar.Fields.Fares != null)
+        {
+            var fares = (List<object>
+    ) airBookAuxiliar.Fields.Fares;
+    if (fares != null && fares.Count > 0)
+    {
+    var fare = fares.Where(f => f != null && f is IDictionary<string, object>
+        ).FirstOrDefault(f =>
+        {
+        var parsed = f as IDictionary<string, object>
+            ;
+            return parsed != null && parsed.ContainsKey("FarePaxType") && farePaxType.Equals(@ParseFarePaxTypeToPassengerType(parsed["FarePaxType"].ToString()));
+            });
+
+            if (fare != null)      {
+            var dictFare = (IDictionary<string, object>
+                ) fare;
+                var exchangerate = 1m;
+                if (dictFare.ContainsKey("ExchangeRate"))       {
+                exchangerate = Framework.Extensions.ToDecimal((((IDictionary<string, object>
+                    ) fare)["ExchangeRate"].ToString()));
+                    }
+                    calculatedMarkup = Framework.Extensions.ToDecimal(((IDictionary<string, object>
+                        ) fare)["CalculatedMarkup"].ToString()) / exchangerate;
+                        }
+                        }
+                        }
+
+                        return calculatedMarkup;
+                        }                 
+}
+@helper Passengers(BaseServiceTemplate serviceItem)
+{
+    var count = 1;
+    var bg = "";
+    
+   foreach (var p in serviceItem.AllPassengers)
+    {        
+        bg = count % 2 == 0 ? "" : "#f5f6fb";
+        
+        <tr style=@("font-size:14px;color:#545461;background-color:" + @bg + ";")>
+            <td style="padding-top:5px;padding-right:10px;padding-bottom:5px;padding-left:10px;border-right-style:solid;border-right-width:2px;border-right-color:white;"> @p.Name </td>
+            <td style="padding-top:5px;padding-right:10px;padding-bottom:5px;padding-left:10px;border-right-style:solid;border-right-width:2px;border-right-color:white;"> @p.BirthDate </td>
+            <td style="padding-top:5px;padding-right:10px;padding-bottom:5px;padding-left:10px;border-right-style:solid;border-right-width:2px;border-right-color:white;"> @p.DocumentNumber </td>
+            <td style="padding-top:5px;padding-right:10px;padding-bottom:5px;padding-left:10px;border-right-style:solid;border-right-width:2px;border-right-color:white;"> @p.Type </td>
+        </tr>
+
+        count++;
+    }
+}
+
+<!DOCTYPE html
+    PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+<html xmlns="http://www.w3.org/1999/xhtml">
+
+<head>
+    <meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+    <title>Template</title>
+    <style>
+    h1 {
+        font-size: 1em;
+    }
+    </style>
+</head>
+
+<body style="font-family: OpenSans, sans-serif; -webkit-print-color-adjust: exact;">
+    <editableBlock>
+        @{
+            var surface = "#f5f6fb";
+            var background = "#DFDFE9";
+            var primary = "black";
+            var alert = "#E40D0D";
+            var accent = "#EF653F";
+            var secondary = "#9393A1";
+
+            var border1 = "border-width:2px;border-radius:4px;color:" + @surface + ";margin-bottom:10px;border-style:solid";
+            var tableHeader = "font-family:Calibri,Arial,Helvetica,sans-serif;border-collapse:collapse;";
+            var rowTitle = "color:" + @primary + ";background-color:" + @background + ";font-weight:bold;font-size:14px;text-align:left;border-bottom-style:solid;border-bottom-width:2px;border-bottom-color:white;font-family:Calibri,Arial,Helvetica,sans-serif;";
+            var rowDefault = "color:"+ @primary + ";font-size:14px;background-color:" + @surface + ";font-family:Calibri,Arial,Helvetica,sans-serif;";
+            var title = "font-weight:bold;font-size:16px;color:" + @accent + ";background-color:" + @surface + ";border-top-left-radius:5px;border-top-right-radius:5px;padding-top:5px;padding-right:10px;padding-bottom:5px;padding-left:10px;display:inline-block;font-family:Calibri,Arial,Helvetica,sans-serif;";
+            var table1 = "border-right-style:solid;border-right-width:2px;border-right-color:white;padding-top:5px;padding-right:10px;padding-bottom:5px;padding-left:10px;font-family:Calibri,Arial,Helvetica,sans-serif;";
+            var tableDefault = "width:100%;margin-bottom:10px;border-bottom-color:" + @background + ";border-bottom-style:solid;border-bottom-width:1px;font-family:Calibri,Arial,Helvetica,sans-serif;border-collapse:collapse;";
+            var tableDefaultBottom = "width:100%;font-family:Calibri,Arial,Helvetica,sans-serif;border-collapse:collapse;";
+            var tableTitle = "width:100%;font-family:Calibri,Arial,Helvetica,sans-serif;border-collapse:collapse;";
+
+            var bgcolor = "#FAF8F7";
+            var dsqcolor0 = "#000000";
+            var dsqcolor1 = "#000000";
+            var dsqcolor2 = "#000000";
+            var dsqcolor3 = "#000000";
+            var dsqcolor4 = "#000000";
+
+            var blue = "#12CDD4";
+            var darkblue ="#0007BF";
+            var bgcolor2 ="#F5EBD1";
+            var bgcolor3 = "#E8E0B8";
+
+            var firstSectionTable = "width:100%;font-family:Calibri,Arial,Helvetica,sans-serif;color:#000000;font-size:12px;border-width:1px;border-style:solid;border-color:#E3E3E3;border-top-left-radius:20px;";
+            var sectionTable = "width:100%;margin-top:13px;font-family:Calibri,Arial,Helvetica,sans-serif;color:#000000;font-size:13px;border-width:1px;border-style:solid;border-color:#E3E3E3;border-top-left-radius:20px;";
+            var sectionTable2 = "font-family:Calibri,Arial,Helvetica,sans-serif;color:"+ @primary +";font-size:14px;border-top-width:2px;border-top-style:solid;border-top-color:#12CDD4;border-top-left-radius:5px;border-top-right-radius:5px;";
+            var sectionTable3 = "font-family:Calibri,Arial,Helvetica,sans-serif;color:"+ @blue +";font-size:14px;border-top-width:2px;border-top-style:solid;border-top-color:"+ @blue +";border-top-left-radius:5px;border-top-right-radius:5px;";
+            var sectionTable4 = "font-family:Calibri,Arial,Helvetica,sans-serif;color:#ffff;font-size:14px;border-top-width:2px;border-top-style:solid;border-top-color:"+ @blue +";border-top-left-radius:5px;border-top-right-radius:5px;";
+            var sectionTitleIMG = "display:inline-block;color:#000000;font-weight:900;font-size:16px;padding:5px;";
+            var sectionTitleNAME = "color:#000000;font-weight:900;font-size:16px;vertical-align:super;";
+            var sectionTitleSatus = "padding-right:5px;text-align:right;font-weight:lighter;vertical-align:super;";
+            var sectionBreak = "margin-top:4px;margin-bottom:4px;border-width:2px;border-style:dashed;border-color:#FFFFFF;";
+
+            var SectionHeader = "padding-top:5px;padding-right:10px;padding-bottom:5px;padding-left:10px;background-color:"+ @surface + ";font-size:12px;font-weight:700;border-top-left-radius:5px;border-top-right-radius:5px;";
+            var SectionHeader2 = "padding-top:5px;padding-right:10px;padding-bottom:5px;padding-left:10px;background-color:"+ @blue + ";font-size:12px;font-weight:700;border-top-left-radius:5px;border-top-right-radius:5px;";
+
+            var subSectionTitle = "display:inline-block;padding:6px;border-top-right-radius:10px;background-color:#E3E3E3;font-size:13px;font-weight:700;";
+
+            var footerTitle  = "text-align:center;";
+            var footerSubTitle = "margin-top:5px;margin-right:0px;margin-bottom:2px;margin-left:0px;font-size:13px;font-weight:700;";
+
+            var theaders = "font-size:13px;font-weight:700;text-align:left;border-top-left-radius:7px;border-top-right-radius:10px;padding-top:5px;padding-right:10px;padding-bottom:3px;padding-left:10px;color:" + dsqcolor0 + ";";
+            var firsttd = "padding-top:2px;padding-bottom:2px;padding-left:5px;font-family:Calibri,Arial,Helvetica,sans-serif;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:#ececec;font-size:13px;line-height:15px;color:" + dsqcolor0 + ";";
+            var eachtd = "padding-top:2px;padding-bottom:2px;font-family:Calibri,Arial,Helvetica,sans-serif;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:#ececec;font-size:13px;line-height:15px;color:" + dsqcolor0 + ";";
+            var innerlist = "padding-left:10px;";
+            var footertd = "padding-top:5px;padding-bottom:5px;padding-left:5px;padding-right:5px;text-align:justify;font-family:Calibri,Arial,Helvetica,sans-serif;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:#ececec;font-size:11px;line-height:15px;color:" + dsqcolor0 + ";";
+
+            var listIndex = "padding-top:2px;padding-bottom:2px;font-family:Calibri,Arial,Helvetica,sans-serif;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:#ececec;font-size:11px;line-height:15px;color:#000000;background-color:#f0f3fb;border-bottom-width:5px;border-bottom-style:solid;border-bottom-color:#f0f3fb;";
+            var listIndexSpan = "margin-left:2px;padding-top:2px;padding-right:6px;padding-bottom:2px;padding-left:6px;background-color:#b3c2ea;";
+            var listContent = "padding-left:5px;padding-top:2px;padding-bottom:2px;font-family:Calibri,Arial,Helvetica,sans-serif;border-bottom-width:1px;border-bottom-style:solid;border-bottom-color:#ececec;font-size:11px;line-height:15px;color:#000000;border-bottom-width:5px;border-bottom-style:solid;border-bottom-color:#f0f3fb;";
+            var psgMultiplier = "margin-left:2px;padding-top:2px;padding-right:6px;padding-bottom:2px;padding-left:6px;border-radius:20px;background-color:#b3c2ea;";
+
+            var linksTemplates = Model.LinksTemplates;
+            bool hasAirBook = linksTemplates.ContainsKey("AirBook");
+            bool hasHotelBook = linksTemplates.ContainsKey("HotelBook");
+            bool hasServiceBook = linksTemplates.ContainsKey("ServiceBook");
+            bool hasCarBook = linksTemplates.ContainsKey("CarBook");
+            bool hasTourBook = linksTemplates.ContainsKey("TourBook");
+            bool hasInsuranceBook = linksTemplates.ContainsKey("InsuranceBook");
+            bool hasCruiseBook = linksTemplates.ContainsKey("CruiseBook");
+            bool hasExtraBook = linksTemplates.ContainsKey("ExtraBook");
+            bool hasExtraBookTrem = false;
+            var i = 0;
+            
+        }
+
+        <div class="wrap" style="width:910px;margin:auto;padding:0px;text-align:left;font-family:Calibri,Arial,Helvetica,sans-serif;">
+            <div class="header">
+                <table style="width:100%;">
+                    <tr>
+                        <td>
+                            <img src="@Model.AgencyContactInformation.Logo">
+                        </td>
+                        <td style="text-align:right; font-size:16px; color:@(primary)">
+                            <span style="font-weight:bold">@Model.AgencyContactInformation.Name </span>
+                            <br /> @Model.AgencyContactInformation.CompleteAdddress
+                            <br />
+                            <span style="display:inline-block;">@Model.AgencyContactInformation.Cep</span>
+                            <br /> T. @Model.AgencyContactInformation.Phone
+                            <br /> CNPJ: @Model.AgencyContactInformation.Cnpj
+                        </td>                     
+                    </tr>
+                </table>
+                <table style="width:100%; margin-bottom:10px;font-family:Calibri,Arial,Helvetica,sans-serif;">
+                    <tr>
+                        <td style="text-align:right;">
+                            <span style="display: block;font-size:16px; padding-left:5px; font-weight:bold;color:@(primary)">OS @Model.Id</span>
+                        </td>
+                    </tr>
+                </table>
+            </div>
+            <hr />
+            <div class="container">
+            <table style=@tableDefault>
+                    <tr style="display:flex; height:300px;text-align:center;margin-top:30px;margin-bottom:30px;">
+                        <td style="background-color: #12CDD4; width: 50%; border-radius: 10px; display: flex; align-items: center;padding: 5px;">
+                            <span style="color:white; font-weight: bold;font-size:25px;line-height:30px;letter-spacing:2px;padding:20px;margin-top:50px;">Você conhece os diferencias da</span>
+                        </td>
+                        <td style="text-align:left; font-size:18px;color:black;line-height:20px;padding:15px;">
+                            <table style="width:100%; margin-top:15px; text-align:center;">
+                                <tr style="width:100%;">
+                                    <td style="text-align:center;">
+                                        <img style="width:90px;height:90px;" src="https://www.machupicchubrasil.com.br/wp-content/uploads/2021/09/personalizacao.png" alt="">
+                                        <span style="font-size: 14px; font-weight: bold;text-align:center;display:block;">
+                                            Personalização
+                                        </span>
+                                        <span style="font-size: 14px;text-align:center;">
+                                            Sua viagem, do seu jeito
+                                        </span>
+                                    </td>
+                                    <td style="width:200px;text-align:center;">
+                                        <img style="width:90px;height:90px;" src="https://www.machupicchubrasil.com.br/wp-content/uploads/2021/09/especializacao.png" alt="">
+                                        <span style="font-size: 14px; font-weight: bold;text-align:center;display:block;">
+                                            Especialização
+                                        </span>
+                                        <span style="font-size:14px;text-align:center;display:block;">
+                                            Conhecemos todos os destinos nos mínimos detalhes
+                                        </span>
+                                    </td>
+                                    <td style="width:200px;text-align:center;">
+                                        <img style="width:90px;height:90px;" src="https://www.machupicchubrasil.com.br/wp-content/uploads/2021/09/excelencia.png" alt="">
+                                        <span style="font-size: 14px; font-weight: bold;text-align:center;display:block;">
+                                            Excelência
+                                            <br/>
+                                        </span>
+                                        <span style="font-size: 14px;text-align:center;display:block;">
+                                            Suporte total desde a compra da viagem até seu retorno para o Brasil
+                                        </span>
+                                    </td>
+                                </tr>
+                            </table>
+                        </td>             
+                    </tr>
+                </table>
+            <div class="container">
+                <table style=@sectionTable3 cellpadding="0" cellspacing="0" border="0">
+                    <tr>
+                        <td style=@SectionHeader>
+                            Viajantes
+                        </td>
+                    </tr>
+                </table>
+                <table cellspacing="0" cellpadding="0" border="0" style=@tableDefault>  
+                    <tr style=@rowTitle>
+                        <th style=@table1>
+                            Nome
+                        </th>
+                        <th style=@table1>
+                            Nascimento
+                        </th>
+                        <th style=@table1>
+                            Documento
+                        </th>
+                        <th style=@table1>
+                            Tipo
+                        </th>
+                    </tr>                                   
+                </table>
+                        @if (hasServiceBook) {                          
+
+                            <table style="width:100%; margin-top:7px;font-family:Calibri,Arial,Helvetica,sans-serif;">
+                                <tr style="padding: 5px 10px">
+                                    <td>
+                                        <span style="vertical-align:middle; display:inline-block;">
+                                            <img src="https://v2.travelagent.com.br/webcommon/images/tourismicons/services.png" />
+                                        </span>
+                                        <span style="display:inline-block">    
+                                            <span style="color:@(primary); font-size: 16px; font-weight:bold;">Serviços</span>
+                                        </span>                       
+                                    </td>
+                                </tr>
+                            </table>
+
+                            foreach (var dataTemplate in linksTemplates["ServiceBook"]) {
+                            var serviceBook = (ServiceBook)dataTemplate;
+
+                            var dateStart = "";
+                            var dateEnd = ""; 
+                            
+                            if(serviceBook.Dates != null){
+                                dateStart = serviceBook.Dates[0]; 
+                                if(serviceBook.Dates.Count > 1){
+                                    dateEnd = serviceBook.Dates[serviceBook.Dates.Count -1];
+                                } else {
+                                    dateEnd = "";
+                                }
+                            }
+
+                            <div style="margin-bottom: 15px;">
+                                <div>
+                                    <table style=@sectionTable3 cellpadding="0" cellspacing="0" border="0">
+                                        <tr>
+                                            <td style=@SectionHeader>
+                                                Detalhes dos serviços
+                                            </td>
+                                        </tr>
+                                    </table>  
+                                    <table cellspacing="0" cellpadding="0" border="0" style=@tableDefaultBottom>        
+                                        <tr style=@rowTitle>
+                                            <th style=@table1;width:40%>Nome do serviço</th>
+                                            <th style=@table1;width:15%>Início</th>
+                                            <th style=@table1;width:15%>Viajantes</th>
+                                            <th style=@table1;width:15%>Tarifa</th>
+                                            <th style=@table1;width:15%>Fornecedor</th>
+                                        </tr>
+                                        <tr style="font-size: 14px; color:#545461; background-color:#f5f6fb;">
+                                            <td style=@table1>serviceBook.ServiceName</td>
+                                            <td style=@table1>dateStart @oi</td>
+                                            <td style=@table1>serviceBook.SummaryAmounts.PassengersCount</td>
+                                            <td style=@table1>serviceBook.Auxiliar.Fields.FareTitle</td>
+                                            <td style=@table1>serviceBook.Auxiliar.Fields.SupplierName</td>
+                                        </tr>
+                                    </table>
+                                </div>    
+                            </div>                       
+                        }                        
+                    }
+            </div>
+        </div>     
+</body>
